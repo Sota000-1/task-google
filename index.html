@@ -3,63 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Windows Desktop Launcher</title>
+  <title>Windows Desktop Assignment Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body {
       font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-      background: radial-gradient(circle at 50% 10%, #1d4ed8 0%, #0f172a 75%, #020617 100%);
+      background: radial-gradient(circle at 50% 10%, #1e3a8a 0%, #0f172a 75%, #020617 100%);
       user-select: none;
       overflow: hidden;
     }
     .desktop-item {
       position: absolute;
       touch-action: none;
+      transition: transform 0.1s ease, border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .desktop-item.folder-hover-target {
+      transform: scale(1.08);
+      background-color: rgba(59, 130, 246, 0.35) !important;
+      border-color: #60a5fa !important;
+      box-shadow: 0 0 15px rgba(96, 165, 250, 0.5);
     }
     .desktop-item:hover {
       background-color: rgba(255, 255, 255, 0.12);
       border-color: rgba(255, 255, 255, 0.25);
     }
-    .desktop-item:active {
-      background-color: rgba(255, 255, 255, 0.22);
+    /* Windows風コンテキストメニュー */
+    .context-menu {
+      animation: menuFadeIn 0.1s ease-out;
     }
-    /* スクロールバー */
+    @keyframes menuFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
   </style>
 </head>
-<body class="h-screen w-screen flex flex-col justify-between text-white">
+<body class="h-screen w-screen flex flex-col justify-between text-white" oncontextmenu="handleContextMenu(event)">
 
-  <!-- 上部ツールバー -->
+  <!-- 上部バー -->
   <header class="bg-slate-900/70 backdrop-blur-md border-b border-white/10 px-4 py-2 flex items-center justify-between z-20 shadow-md">
-    <!-- ショートカット新規作成 -->
-    <form onsubmit="addShortcut(event)" class="flex items-center gap-2 flex-1 max-w-xl">
+    <!-- ショートカット通常作成フォーム -->
+    <form onsubmit="addShortcutFromBar(event)" class="flex items-center gap-2 flex-1 max-w-xl">
       <div class="relative flex-1">
         <i class="fa-solid fa-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-        <input type="text" id="inputUrl" required placeholder="URL (例: docs.google.com/... や canva.com...)" 
+        <input type="text" id="inputUrl" required placeholder="URL入力 または デスクトップ上で [Ctrl + V]..." 
                class="w-full bg-slate-800/90 border border-slate-700 rounded pl-8 pr-2.5 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
       </div>
       <input type="text" id="inputName" placeholder="名前 (省略OK)" 
-             class="w-36 bg-slate-800/90 border border-slate-700 rounded px-2.5 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
-      <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded shadow transition shrink-0 flex items-center gap-1">
-        <i class="fa-solid fa-plus text-[10px]"></i> 追加
+             class="w-32 bg-slate-800/90 border border-slate-700 rounded px-2.5 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
+      <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded shadow transition shrink-0">
+        追加
       </button>
     </form>
 
-    <!-- フォルダ作成 & Docs一発生成ボタン -->
+    <!-- クイックボタン -->
     <div class="flex items-center gap-2 pl-3 border-l border-white/10 ml-3">
-      <button onclick="openCreateFolderModal()" class="bg-amber-600/40 hover:bg-amber-600/70 border border-amber-400/40 text-amber-200 text-xs font-bold px-2.5 py-1 rounded transition flex items-center gap-1.5">
+      <button onclick="createNewFolderPrompt()" class="bg-amber-600/40 hover:bg-amber-600/70 border border-amber-400/40 text-amber-200 text-xs font-bold px-2.5 py-1 rounded transition flex items-center gap-1.5">
         <i class="fa-solid fa-folder-plus text-amber-300"></i> +フォルダ
+      </button>
+      <button onclick="openLegacyManager()" class="bg-indigo-600/40 hover:bg-indigo-600/70 border border-indigo-400/40 text-indigo-200 text-xs font-bold px-2.5 py-1 rounded transition flex items-center gap-1.5">
+        <i class="fa-solid fa-list-check text-indigo-300"></i> 課題一覧
       </button>
 
       <span class="text-slate-600">|</span>
 
-      <button onclick="window.open('https://docs.new', '_blank')" title="新規Docs" class="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/50 border border-blue-400/30 rounded text-blue-300 text-xs transition">
-        <i class="fa-solid fa-file-word"></i> +Docs
+      <button onclick="window.open('https://docs.new', '_blank')" title="新規Docs" class="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/50 border border-blue-400/30 rounded text-blue-300 text-xs">
+        <i class="fa-solid fa-file-word"></i> +Doc
       </button>
-      <button onclick="window.open('https://sheets.new', '_blank')" title="新規Sheets" class="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/50 border border-emerald-400/30 rounded text-emerald-300 text-xs transition">
-        <i class="fa-solid fa-file-excel"></i> +Sheets
+      <button onclick="window.open('https://sheets.new', '_blank')" title="新規Sheets" class="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/50 border border-emerald-400/30 rounded text-emerald-300 text-xs">
+        <i class="fa-solid fa-file-excel"></i> +Sheet
       </button>
 
       <span class="text-slate-600">|</span>
@@ -71,30 +85,42 @@
     </div>
   </header>
 
-  <!-- デスクトップ領域（自由配置エリア） -->
+  <!-- デスクトップキャンバス -->
   <main id="desktopCanvas" class="flex-1 relative w-full h-full overflow-hidden">
-    <!-- ドラッグ可能なアイコンがここに入ります -->
+    <!-- アイコンがグリッドに吸着して並びます -->
   </main>
 
   <!-- タスクバー -->
-  <footer class="h-10 bg-slate-950/80 backdrop-blur-lg border-t border-white/10 px-4 flex items-center justify-between text-xs text-slate-400 z-20">
+  <footer class="h-10 bg-slate-950/85 backdrop-blur-lg border-t border-white/10 px-4 flex items-center justify-between text-xs text-slate-400 z-20">
     <div class="flex items-center gap-3">
       <div class="flex items-center gap-1.5 text-blue-400 font-bold">
         <i class="fa-brands fa-windows text-sm"></i>
-        <span>Desktop Workspace</span>
+        <span>Windows Workspace</span>
       </div>
       <span class="text-slate-600">|</span>
       <span id="itemCount" class="text-[11px]">0 アイテム</span>
-      <span class="text-slate-500 text-[10px]">（アイコンはドラッグして好きな場所に配置できます）</span>
+      <span class="text-amber-300/80 text-[11px] bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 hidden md:inline">
+        💡 右クリックで新規作成 / アイコンをフォルダに重ねると中に入ります
+      </span>
     </div>
     <div id="clock" class="font-mono text-slate-300 text-[11px]"></div>
   </footer>
 
-  <!-- フォルダ中身のエクスプローラー風ウィンドウ -->
+  <!-- Windows風 右クリックメニュー -->
+  <div id="contextMenu" class="context-menu fixed bg-slate-900/95 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl py-1 w-48 text-xs text-slate-200 hidden z-50">
+    <!-- 動的生成 -->
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="fixed bottom-14 right-6 bg-slate-900/90 border border-blue-400/50 text-white px-4 py-2 rounded-lg shadow-2xl text-xs flex items-center gap-2 transform translate-y-10 opacity-0 transition-all pointer-events-none z-50">
+    <i class="fa-solid fa-circle-check text-blue-400"></i>
+    <span id="toastMessage">完了</span>
+  </div>
+
+  <!-- フォルダ中身ウィンドウ（エクスプローラー風） -->
   <div id="folderWindow" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center hidden p-4">
     <div class="bg-slate-900 border border-white/20 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-      <!-- フォルダウィンドウのタイトルバー -->
-      <div class="px-4 py-2 bg-slate-800/90 border-b border-white/10 flex items-center justify-between text-xs">
+      <div class="px-4 py-2.5 bg-slate-800/90 border-b border-white/10 flex items-center justify-between text-xs">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-folder-open text-amber-400 text-sm"></i>
           <span id="folderWindowTitle" class="font-bold text-slate-200">フォルダ</span>
@@ -104,62 +130,135 @@
         </button>
       </div>
 
-      <!-- フォルダ内の操作バー -->
       <div class="p-3 bg-slate-950/60 border-b border-white/5 flex flex-wrap items-center justify-between gap-2">
-        <!-- フォルダ内に直接URL追加 -->
         <form onsubmit="addLinkToCurrentFolder(event)" class="flex items-center gap-2 flex-1 max-w-md">
           <input type="text" id="folderInputUrl" required placeholder="このフォルダに追加するURL..." 
                  class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
           <input type="text" id="folderInputName" placeholder="名前 (省略OK)" 
-                 class="w-28 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
+                 class="w-24 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
           <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-2.5 py-1 rounded shrink-0">追加</button>
         </form>
 
-        <!-- 一括オープンボタン -->
         <button onclick="launchAllInCurrentFolder()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3 py-1 rounded shadow flex items-center gap-1.5 shrink-0">
           <i class="fa-solid fa-bolt text-amber-300"></i>
           <span id="folderLaunchBtnText">すべて開く</span>
         </button>
       </div>
 
-      <!-- フォルダ内のリンク一覧 -->
-      <div id="folderItemList" class="p-4 overflow-y-auto flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        <!-- JSでフォルダ内のアイテムが並びます -->
+      <div id="folderItemList" class="p-4 overflow-y-auto flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+    </div>
+  </div>
+
+  <!-- 【もともとの課題管理システム】統合ウィンドウ -->
+  <div id="legacyManagerModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-white/20 w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-4 py-2.5 bg-indigo-950/80 border-b border-white/10 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-indigo-400"></i>
+          <span class="font-bold text-white">課題マネージャー（要件・参考文献・締切管理）</span>
+        </div>
+        <button onclick="closeLegacyManager()" class="text-slate-400 hover:text-white hover:bg-rose-600 px-2 py-0.5 rounded transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto flex-1 space-y-4">
+        <div class="flex justify-between items-center">
+          <div class="text-xs text-slate-400">締切や複数の参考文献、作業ドキュメントをまとめて管理するマスターボードです。</div>
+          <button onclick="openLegacyAddModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded shadow">
+            + 課題を追加
+          </button>
+        </div>
+        <div id="legacyTaskList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
       </div>
     </div>
   </div>
 
-  <!-- 新規フォルダ作成モーダル -->
-  <div id="newFolderModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-slate-900 border border-white/20 p-4 rounded-lg w-80 shadow-2xl">
-      <h3 class="text-xs font-bold mb-3 text-slate-300 flex items-center gap-1.5">
-        <i class="fa-solid fa-folder-plus text-amber-400"></i> 新規フォルダの作成
+  <!-- 課題追加・編集モーダル -->
+  <div id="legacyAddModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-white/20 w-full max-w-lg rounded-xl shadow-2xl p-5 text-xs text-slate-200">
+      <h3 class="font-bold text-sm text-white mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-pen-to-square text-indigo-400"></i> 課題の登録 / 編集
       </h3>
-      <input type="text" id="newFolderName" placeholder="例: 日本史レポート, 英語プレゼン" class="w-full bg-slate-800 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-400 mb-3">
-      <div class="flex justify-end gap-2">
-        <button onclick="closeCreateFolderModal()" class="px-3 py-1 text-xs text-slate-400 hover:text-white">キャンセル</button>
-        <button onclick="confirmCreateFolder()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-xs font-bold text-white">作成</button>
-      </div>
+      <form id="legacyTaskForm" onsubmit="saveLegacyTask(event)" class="space-y-3">
+        <input type="hidden" id="legacyTaskId">
+        <div>
+          <label class="block font-bold text-slate-400 mb-1">課題タイトル *</label>
+          <input type="text" id="legacyTitle" required class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">種別</label>
+            <select id="legacyType" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white">
+              <option value="レポート">📄 レポート</option>
+              <option value="小論文">✍️ 小論文</option>
+              <option value="ポスター">🎨 ポスター</option>
+              <option value="口頭試問">🗣️ 口頭試問</option>
+              <option value="テスト">📝 テスト/練習問題</option>
+              <option value="その他">📌 その他</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-400 mb-1">締切</label>
+            <input type="datetime-local" id="legacyDeadline" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white">
+          </div>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-400 mb-1">作業ドキュメントURL (Docs / Canva 等)</label>
+          <input type="text" id="legacyWorkUrl" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-400 mb-1">要件 / 提出先URL (Turnitin / Classroom)</label>
+          <input type="text" id="legacyReqUrl" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-400 mb-1">参考文献（1行に1つURLを貼り付け）</label>
+          <textarea id="legacyRefs" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white font-mono text-[11px]"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeLegacyAddModal()" class="px-3 py-1.5 text-slate-400">キャンセル</button>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 font-bold px-4 py-1.5 rounded text-white">保存</button>
+        </div>
+      </form>
     </div>
   </div>
 
   <script>
-    // データ管理
-    let desktopItems = JSON.parse(localStorage.getItem('desktop_items_v2')) || [
-      { id: '1', type: 'shortcut', name: 'Google Classroom', url: 'https://classroom.google.com', x: 30, y: 30 },
-      { id: '2', type: 'shortcut', name: 'Google Drive', url: 'https://drive.google.com', x: 30, y: 130 },
-      { id: '3', type: 'folder', name: 'レポート課題セット', x: 30, y: 230, items: [] }
+    // グリッド定義（横96px × 縦104px）
+    const CELL_W = 96;
+    const CELL_H = 104;
+    const OFFSET_X = 20;
+    const OFFSET_Y = 20;
+
+    // データストア
+    let desktopItems = JSON.parse(localStorage.getItem('desktop_items_v3')) || [
+      { id: 'system_manager', type: 'system', name: '課題マネージャー', x: 20, y: 20, icon: 'fa-solid fa-list-check', color: 'text-indigo-400', bg: 'bg-indigo-500/20' },
+      { id: '1', type: 'shortcut', name: 'Google Classroom', url: 'https://classroom.google.com', x: 20, y: 124 },
+      { id: '2', type: 'shortcut', name: 'Google Drive', url: 'https://drive.google.com', x: 20, y: 228 },
+      { id: '3', type: 'folder', name: '日本史レポート', x: 116, y: 20, items: [] }
     ];
 
+    // もともとの課題データ
+    let legacyTasks = JSON.parse(localStorage.getItem('legacy_tasks_v3')) || [];
+
     let currentOpenFolderId = null;
+    let mouseX = 100, mouseY = 100;
+    let contextTargetItem = null;
+
+    // マウス位置追跡
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
 
     function saveToStorage() {
-      localStorage.setItem('desktop_items_v2', JSON.stringify(desktopItems));
+      localStorage.setItem('desktop_items_v3', JSON.stringify(desktopItems));
+      localStorage.setItem('legacy_tasks_v3', JSON.stringify(legacyTasks));
       renderDesktop();
       if (currentOpenFolderId) renderFolderWindow(currentOpenFolderId);
     }
 
-    // URLの自動認識アイコン
+    // URLアイコン判別
     function detectType(url) {
       if (!url) return { icon: 'fa-solid fa-globe', color: 'text-blue-300', bg: 'bg-blue-500/10', defaultName: 'Web サイト' };
       if (url.includes('docs.google.com/document')) return { icon: 'fa-solid fa-file-lines', color: 'text-blue-400', bg: 'bg-blue-500/20', defaultName: 'Google ドキュメント' };
@@ -171,6 +270,39 @@
       return { icon: 'fa-solid fa-globe', color: 'text-blue-300', bg: 'bg-blue-500/10', defaultName: 'Web サイト' };
     }
 
+    // グリッド空きマス検索（絶対に重ならないロジック）
+    function findFreeGridCell(prefX, prefY, ignoreId = null) {
+      const col = Math.max(0, Math.round((prefX - OFFSET_X) / CELL_W));
+      const row = Math.max(0, Math.round((prefY - OFFSET_Y) / CELL_H));
+
+      function isOccupied(c, r) {
+        return desktopItems.some(item => {
+          if (item.id === ignoreId) return false;
+          const itemCol = Math.round((item.x - OFFSET_X) / CELL_W);
+          const itemRow = Math.round((item.y - OFFSET_Y) / CELL_H);
+          return itemCol === c && itemRow === r;
+        });
+      }
+
+      if (!isOccupied(col, row)) {
+        return { x: OFFSET_X + col * CELL_W, y: OFFSET_Y + row * CELL_H };
+      }
+
+      // 周囲の空きマスを探す（スパイラル検索）
+      for (let dist = 1; dist < 25; dist++) {
+        for (let dc = -dist; dc <= dist; dc++) {
+          for (let dr = -dist; dr <= dist; dr++) {
+            const nc = col + dc;
+            const nr = row + dr;
+            if (nc >= 0 && nr >= 0 && !isOccupied(nc, nr)) {
+              return { x: OFFSET_X + nc * CELL_W, y: OFFSET_Y + nr * CELL_H };
+            }
+          }
+        }
+      }
+      return { x: prefX, y: prefY };
+    }
+
     // デスクトップ描画
     function renderDesktop() {
       const canvas = document.getElementById('desktopCanvas');
@@ -179,25 +311,31 @@
 
       desktopItems.forEach(item => {
         const el = document.createElement('div');
-        el.className = `desktop-item group flex flex-col items-center justify-start p-2 rounded-lg border border-transparent cursor-pointer transition w-24`;
-        el.style.left = `${item.x || 30}px`;
-        el.style.top = `${item.y || 30}px`;
+        el.className = `desktop-item group flex flex-col items-center justify-start p-2 rounded-lg border border-transparent cursor-pointer w-24`;
+        el.id = `item-${item.id}`;
+        el.style.left = `${item.x}px`;
+        el.style.top = `${item.y}px`;
 
-        if (item.type === 'folder') {
-          // フォルダアイコン
+        if (item.type === 'system') {
+          // システムアイコン（課題マネージャー）
+          el.innerHTML = `
+            <div class="relative w-12 h-12 rounded-xl flex items-center justify-center mb-1 ${item.bg} border border-indigo-400/40 shadow-md">
+              <i class="${item.icon} ${item.color} text-2xl"></i>
+            </div>
+            <span class="text-[11px] font-bold text-indigo-200 leading-tight text-center drop-shadow">${item.name}</span>
+          `;
+        } else if (item.type === 'folder') {
+          // フォルダ
           const count = item.items ? item.items.length : 0;
           el.innerHTML = `
             <div class="relative w-12 h-12 rounded-xl flex items-center justify-center mb-1 bg-amber-500/20 border border-amber-400/30 shadow-md">
               <i class="fa-solid fa-folder text-amber-400 text-2xl"></i>
               <span class="absolute -top-1 -right-1 bg-amber-500 text-slate-900 font-bold rounded-full text-[9px] w-4 h-4 flex items-center justify-center shadow">${count}</span>
             </div>
-            <span class="text-[11px] font-medium text-slate-100 leading-tight line-clamp-2 drop-shadow break-all px-1">${item.name}</span>
-            <button onclick="deleteItem('${item.id}', event)" title="削除" class="absolute -top-1 -right-1 hidden group-hover:flex bg-slate-900 border border-white/20 rounded p-1 hover:text-rose-400 text-slate-400 text-[10px] z-10">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+            <span class="text-[11px] font-medium text-slate-100 leading-tight line-clamp-2 drop-shadow break-all px-1 text-center">${item.name}</span>
           `;
         } else {
-          // ショートカットアイコン
+          // ショートカット
           const type = detectType(item.url);
           el.innerHTML = `
             <div class="relative w-12 h-12 rounded-xl flex items-center justify-center mb-1 ${type.bg} border border-white/10 shadow-md">
@@ -206,27 +344,24 @@
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
               </div>
             </div>
-            <span class="text-[11px] font-medium text-slate-100 leading-tight line-clamp-2 drop-shadow break-all px-1" title="${item.url}">${item.name}</span>
-            <button onclick="deleteItem('${item.id}', event)" title="削除" class="absolute -top-1 -right-1 hidden group-hover:flex bg-slate-900 border border-white/20 rounded p-1 hover:text-rose-400 text-slate-400 text-[10px] z-10">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
+            <span class="text-[11px] font-medium text-slate-100 leading-tight line-clamp-2 drop-shadow break-all px-1 text-center" title="${item.url}">${item.name}</span>
           `;
         }
 
-        // ドラッグ & クリック制御の登録
-        attachDragAndClick(el, item);
+        attachDragAndFolderDrop(el, item);
         canvas.appendChild(el);
       });
     }
 
-    // ドラッグ＆クリック制御（ドラッグ時はリンクを開かない）
-    function attachDragAndClick(el, item) {
+    // ドラッグ＆グリッド吸着＆フォルダ内ドロップ
+    function attachDragAndFolderDrop(el, item) {
       let isDragging = false;
       let startX, startY;
       let initialLeft, initialTop;
+      let hoveredFolderId = null;
 
       el.addEventListener('mousedown', (e) => {
-        if (e.target.closest('button')) return;
+        if (e.button !== 0) return; // 左クリックのみ
 
         isDragging = false;
         startX = e.clientX;
@@ -238,44 +373,75 @@
           const dx = moveEvent.clientX - startX;
           const dy = moveEvent.clientY - startY;
 
-          // 5px以上動いたらドラッグと判定
           if (Math.hypot(dx, dy) > 5) {
             isDragging = true;
             el.style.zIndex = 100;
             el.style.cursor = 'grabbing';
+            closeContextMenu();
 
-            // 自由配置
-            let newX = initialLeft + dx;
-            let newY = initialTop + dy;
+            let curX = initialLeft + dx;
+            let curY = initialTop + dy;
+            el.style.left = `${curX}px`;
+            el.style.top = `${curY}px`;
 
-            // 画面外にはみ出さないよう制限
-            newX = Math.max(10, Math.min(window.innerWidth - 100, newX));
-            newY = Math.max(10, Math.min(window.innerHeight - 150, newY));
+            // ショートカットをドラッグ中、フォルダの上に重なっているかを判定
+            if (item.type === 'shortcut') {
+              hoveredFolderId = null;
+              document.querySelectorAll('.desktop-item').forEach(otherEl => otherEl.classList.remove('folder-hover-target'));
 
-            el.style.left = `${newX}px`;
-            el.style.top = `${newY}px`;
+              desktopItems.filter(f => f.type === 'folder' && f.id !== item.id).forEach(folder => {
+                const fEl = document.getElementById(`item-${folder.id}`);
+                if (!fEl) return;
+                const r = fEl.getBoundingClientRect();
+                const myR = el.getBoundingClientRect();
+
+                // 中心点同士が重なっているか
+                const overlap = !(myR.right < r.left || myR.left > r.right || myR.bottom < r.top || myR.top > r.bottom);
+                if (overlap) {
+                  hoveredFolderId = folder.id;
+                  fEl.classList.add('folder-hover-target');
+                }
+              });
+            }
           }
         }
 
-        function onMouseUp(upEvent) {
+        function onMouseUp() {
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
           el.style.zIndex = '';
           el.style.cursor = 'pointer';
+          document.querySelectorAll('.desktop-item').forEach(otherEl => otherEl.classList.remove('folder-hover-target'));
 
           if (isDragging) {
-            // スナップ（20px刻みに吸着させて綺麗に整列）
-            let finalX = Math.round(parseInt(el.style.left) / 20) * 20;
-            let finalY = Math.round(parseInt(el.style.top) / 20) * 20;
-            el.style.left = `${finalX}px`;
-            el.style.top = `${finalY}px`;
+            // 【機能1】フォルダに重ねてドロップした場合 → フォルダに格納！
+            if (item.type === 'shortcut' && hoveredFolderId) {
+              const targetFolder = desktopItems.find(f => f.id === hoveredFolderId);
+              if (targetFolder) {
+                if (!targetFolder.items) targetFolder.items = [];
+                targetFolder.items.push({
+                  id: item.id,
+                  name: item.name,
+                  url: item.url
+                });
+                // デスクトップから削除
+                desktopItems = desktopItems.filter(i => i.id !== item.id);
+                showToast(`📁 ${targetFolder.name} に追加しました`);
+                saveToStorage();
+                return;
+              }
+            }
 
-            item.x = finalX;
-            item.y = finalY;
+            // 【機能2】グリッド自動吸着（絶対に重ならない）
+            const freeCell = findFreeGridCell(parseInt(el.style.left), parseInt(el.style.top), item.id);
+            item.x = freeCell.x;
+            item.y = freeCell.y;
             saveToStorage();
           } else {
-            // クリック時：フォルダなら展開、ショートカットなら開く
-            if (item.type === 'folder') {
+            // クリック判定
+            if (item.type === 'system') {
+              openLegacyManager();
+            } else if (item.type === 'folder') {
               openFolderWindow(item.id);
             } else {
               window.open(item.url, '_blank');
@@ -288,23 +454,150 @@
       });
     }
 
-    // ショートカット追加
-    function addShortcut(e) {
+    // Ctrl + V ペースト作成（グリッドに自動吸着）
+    document.addEventListener('paste', (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text').trim();
+      if (!pastedText) return;
+
+      let url = pastedText;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        if (url.includes('.') && !url.includes('\n') && !url.includes(' ')) {
+          url = 'https://' + url;
+        } else {
+          return;
+        }
+      }
+
+      // マウス位置の最も近い空きグリッドセルを取得
+      const freeCell = findFreeGridCell(mouseX - 40, mouseY - 40);
+      const type = detectType(url);
+
+      desktopItems.push({
+        id: Date.now().toString(),
+        type: 'shortcut',
+        name: type.defaultName,
+        url: url,
+        x: freeCell.x,
+        y: freeCell.y
+      });
+
+      saveToStorage();
+      showToast(`ショートカットを作成しました: ${type.defaultName}`);
+    });
+
+    // Windows風 右クリックメニュー
+    function handleContextMenu(e) {
+      e.preventDefault();
+      const menu = document.getElementById('contextMenu');
+      const targetItemEl = e.target.closest('.desktop-item');
+
+      contextTargetItem = null;
+      if (targetItemEl) {
+        const id = targetItemEl.id.replace('item-', '');
+        contextTargetItem = desktopItems.find(i => i.id === id);
+      }
+
+      let html = '';
+      if (contextTargetItem) {
+        // アイコンの上で右クリック
+        html = `
+          <div class="px-3 py-1 font-bold text-slate-400 border-b border-white/10 truncate">${contextTargetItem.name}</div>
+          <button onclick="contextAction('open')" class="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> 開く</button>
+          <button onclick="contextAction('rename')" class="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2"><i class="fa-solid fa-pen text-[10px]"></i> 名前の変更</button>
+          ${contextTargetItem.url ? `<button onclick="contextAction('copyUrl')" class="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2"><i class="fa-solid fa-copy text-[10px]"></i> URLをコピー</button>` : ''}
+          ${contextTargetItem.type !== 'system' ? `<button onclick="contextAction('delete')" class="w-full text-left px-3 py-1.5 hover:bg-rose-600 hover:text-white flex items-center gap-2 text-rose-400"><i class="fa-solid fa-trash text-[10px]"></i> 削除</button>` : ''}
+        `;
+      } else {
+        // デスクトップの何もないところで右クリック
+        html = `
+          <button onclick="contextAction('newFolder')" class="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2"><i class="fa-solid fa-folder-plus text-amber-400"></i> 新規フォルダ</button>
+          <button onclick="contextAction('alignGrid')" class="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2"><i class="fa-solid fa-table-cells text-slate-400"></i> アイコンの自動整列</button>
+          <div class="border-t border-white/10 my-1"></div>
+          <button onclick="openLegacyManager(); closeContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2"><i class="fa-solid fa-list-check text-indigo-400"></i> 課題一覧を開く</button>
+        `;
+      }
+
+      menu.innerHTML = html;
+      menu.style.left = `${Math.min(window.innerWidth - 200, e.clientX)}px`;
+      menu.style.top = `${Math.min(window.innerHeight - 180, e.clientY)}px`;
+      menu.classList.remove('hidden');
+    }
+
+    function closeContextMenu() {
+      document.getElementById('contextMenu').classList.add('hidden');
+    }
+    document.addEventListener('click', closeContextMenu);
+
+    function contextAction(action) {
+      if (action === 'newFolder') {
+        createNewFolderPrompt(mouseX, mouseY);
+      } else if (action === 'alignGrid') {
+        alignAllIconsToGrid();
+      } else if (contextTargetItem) {
+        if (action === 'open') {
+          if (contextTargetItem.type === 'system') openLegacyManager();
+          else if (contextTargetItem.type === 'folder') openFolderWindow(contextTargetItem.id);
+          else window.open(contextTargetItem.url, '_blank');
+        } else if (action === 'rename') {
+          const newName = prompt('新しい名前を入力してください', contextTargetItem.name);
+          if (newName) { contextTargetItem.name = newName.trim(); saveToStorage(); }
+        } else if (action === 'copyUrl' && contextTargetItem.url) {
+          navigator.clipboard.writeText(contextTargetItem.url);
+          showToast('URLをクリップボードにコピーしました');
+        } else if (action === 'delete') {
+          desktopItems = desktopItems.filter(i => i.id !== contextTargetItem.id);
+          saveToStorage();
+        }
+      }
+      closeContextMenu();
+    }
+
+    // アイコンの自動整列（左上から綺麗にグリッド配置）
+    function alignAllIconsToGrid() {
+      let col = 0, row = 0;
+      const maxRows = Math.floor((window.innerHeight - 140) / CELL_H);
+      desktopItems.forEach(item => {
+        item.x = OFFSET_X + col * CELL_W;
+        item.y = OFFSET_Y + row * CELL_H;
+        row++;
+        if (row >= maxRows) { row = 0; col++; }
+      });
+      saveToStorage();
+      showToast('アイコンを自動整列しました');
+    }
+
+    function createNewFolderPrompt(clickX = 120, clickY = 120) {
+      const name = prompt('フォルダ名を入力してください', '新しい課題フォルダ');
+      if (!name) return;
+      const freeCell = findFreeGridCell(clickX, clickY);
+      desktopItems.push({
+        id: Date.now().toString(),
+        type: 'folder',
+        name: name.trim(),
+        x: freeCell.x,
+        y: freeCell.y,
+        items: []
+      });
+      saveToStorage();
+    }
+
+    function addShortcutFromBar(e) {
       e.preventDefault();
       let url = document.getElementById('inputUrl').value.trim();
       let name = document.getElementById('inputName').value.trim();
       if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
       if (!name) name = detectType(url).defaultName;
 
-      // 新規アイテムの配置位置（適当に空いている場所を探す）
-      const offset = (desktopItems.length * 30) % 200;
+      const freeCell = findFreeGridCell(150, 150);
       desktopItems.push({
         id: Date.now().toString(),
         type: 'shortcut',
         name: name,
         url: url,
-        x: 140 + offset,
-        y: 30 + offset
+        x: freeCell.x,
+        y: freeCell.y
       });
 
       document.getElementById('inputUrl').value = '';
@@ -312,31 +605,7 @@
       saveToStorage();
     }
 
-    // フォルダ作成モーダル
-    function openCreateFolderModal() {
-      document.getElementById('newFolderName').value = '';
-      document.getElementById('newFolderModal').classList.remove('hidden');
-      document.getElementById('newFolderName').focus();
-    }
-    function closeCreateFolderModal() {
-      document.getElementById('newFolderModal').classList.add('hidden');
-    }
-    function confirmCreateFolder() {
-      const name = document.getElementById('newFolderName').value.trim() || '新しいフォルダ';
-      const offset = (desktopItems.length * 30) % 200;
-      desktopItems.push({
-        id: Date.now().toString(),
-        type: 'folder',
-        name: name,
-        x: 140 + offset,
-        y: 120 + offset,
-        items: []
-      });
-      closeCreateFolderModal();
-      saveToStorage();
-    }
-
-    // フォルダウィンドウ操作
+    // フォルダウィンドウ
     function openFolderWindow(folderId) {
       currentOpenFolderId = folderId;
       renderFolderWindow(folderId);
@@ -346,23 +615,19 @@
       document.getElementById('folderWindow').classList.add('hidden');
       currentOpenFolderId = null;
     }
-
     function renderFolderWindow(folderId) {
       const folder = desktopItems.find(i => i.id === folderId);
       if (!folder) return closeFolderWindow();
-
       document.getElementById('folderWindowTitle').textContent = folder.name;
       const list = document.getElementById('folderItemList');
       list.innerHTML = '';
-
       const items = folder.items || [];
       document.getElementById('folderLaunchBtnText').textContent = `すべて開く (${items.length}タブ)`;
 
       if (items.length === 0) {
-        list.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500 text-xs">リンクがありません。上の入力バーから追加してください。</div>`;
+        list.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500 text-xs">リンクがありません。デスクトップからアイコンをドラッグして入れるか、上部から追加してください。</div>`;
         return;
       }
-
       items.forEach(link => {
         const type = detectType(link.url);
         const card = document.createElement('div');
@@ -381,51 +646,35 @@
               <div class="text-[10px] text-slate-400 truncate">${link.url}</div>
             </div>
           </div>
-          <button onclick="deleteLinkFromFolder('${link.id}', event)" class="text-slate-500 hover:text-rose-400 text-xs p-1 ml-2 shrink-0">
+          <button onclick="removeLinkFromFolder('${link.id}', event)" class="text-slate-500 hover:text-rose-400 text-xs p-1 ml-2 shrink-0">
             <i class="fa-solid fa-trash"></i>
           </button>
         `;
         list.appendChild(card);
       });
     }
-
-    // フォルダ内にURL追加
     function addLinkToCurrentFolder(e) {
       e.preventDefault();
       if (!currentOpenFolderId) return;
-
       const folder = desktopItems.find(i => i.id === currentOpenFolderId);
       if (!folder) return;
-
       let url = document.getElementById('folderInputUrl').value.trim();
       let name = document.getElementById('folderInputName').value.trim();
       if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
       if (!name) name = detectType(url).defaultName;
-
       if (!folder.items) folder.items = [];
-      folder.items.push({
-        id: Date.now().toString(),
-        name: name,
-        url: url
-      });
-
+      folder.items.push({ id: Date.now().toString(), name: name, url: url });
       document.getElementById('folderInputUrl').value = '';
       document.getElementById('folderInputName').value = '';
       saveToStorage();
     }
-
-    // フォルダ内のURL一括オープン
     function launchAllInCurrentFolder() {
       if (!currentOpenFolderId) return;
       const folder = desktopItems.find(i => i.id === currentOpenFolderId);
-      if (!folder || !folder.items || folder.items.length === 0) {
-        alert('開くリンクがありません');
-        return;
-      }
+      if (!folder || !folder.items || folder.items.length === 0) return alert('開くリンクがありません');
       folder.items.forEach(item => window.open(item.url, '_blank'));
     }
-
-    function deleteLinkFromFolder(linkId, e) {
+    function removeLinkFromFolder(linkId, e) {
       e.stopPropagation();
       const folder = desktopItems.find(i => i.id === currentOpenFolderId);
       if (folder && folder.items) {
@@ -434,22 +683,101 @@
       }
     }
 
-    // デスクトップアイテム削除
-    function deleteItem(id, e) {
-      e.stopPropagation();
-      if (confirm('削除しますか？')) {
-        desktopItems = desktopItems.filter(i => i.id !== id);
+    // 【もともとの課題管理マネージャー】
+    function openLegacyManager() {
+      renderLegacyTasks();
+      document.getElementById('legacyManagerModal').classList.remove('hidden');
+    }
+    function closeLegacyManager() {
+      document.getElementById('legacyManagerModal').classList.add('hidden');
+    }
+    function renderLegacyTasks() {
+      const list = document.getElementById('legacyTaskList');
+      list.innerHTML = '';
+      if (legacyTasks.length === 0) {
+        list.innerHTML = `<div class="col-span-full py-10 text-center text-slate-500 text-xs">課題が登録されていません。「+ 課題を追加」から登録してください。</div>`;
+        return;
+      }
+      legacyTasks.forEach(task => {
+        const refs = task.references ? task.references.split('\n').filter(r => r.trim().length > 0) : [];
+        const card = document.createElement('div');
+        card.className = `bg-slate-800/90 border border-white/10 rounded-lg p-3 text-xs flex flex-col justify-between`;
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start mb-1.5">
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">${task.type}</span>
+              <button onclick="deleteLegacyTask('${task.id}')" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash text-[10px]"></i></button>
+            </div>
+            <div class="font-bold text-slate-100 mb-1 text-sm">${task.title}</div>
+            <div class="text-[10px] text-slate-400 mb-2"><i class="fa-regular fa-clock mr-1"></i>${task.deadline ? new Date(task.deadline).toLocaleString('ja-JP') : '期限なし'}</div>
+            <div class="space-y-1 mb-2">
+              ${task.workUrl ? `<a href="${task.workUrl}" target="_blank" class="block truncate bg-blue-600/30 text-blue-200 px-2 py-1 rounded text-[10px]"><i class="fa-solid fa-file-pen mr-1"></i>作業ドキュメント</a>` : ''}
+              ${task.reqUrl ? `<a href="${task.reqUrl}" target="_blank" class="block truncate bg-emerald-600/30 text-emerald-200 px-2 py-1 rounded text-[10px]"><i class="fa-solid fa-clipboard-check mr-1"></i>要件/提出先</a>` : ''}
+            </div>
+            ${refs.length > 0 ? `<div class="text-[10px] text-slate-400 mb-2"><i class="fa-solid fa-book-bookmark mr-1"></i>参考文献: ${refs.length}件</div>` : ''}
+          </div>
+          <button onclick="launchLegacyTask('${task.id}')" class="w-full mt-2 py-1 bg-indigo-600 hover:bg-indigo-500 font-bold text-white rounded text-[11px] flex items-center justify-center gap-1 shadow">
+            <i class="fa-solid fa-bolt text-amber-300"></i> 一括オープン (${(task.workUrl?1:0)+(task.reqUrl?1:0)+refs.length}タブ)
+          </button>
+        `;
+        list.appendChild(card);
+      });
+    }
+    function openLegacyAddModal() {
+      document.getElementById('legacyTaskForm').reset();
+      document.getElementById('legacyTaskId').value = '';
+      document.getElementById('legacyAddModal').classList.remove('hidden');
+    }
+    function closeLegacyAddModal() {
+      document.getElementById('legacyAddModal').classList.add('hidden');
+    }
+    function saveLegacyTask(e) {
+      e.preventDefault();
+      legacyTasks.push({
+        id: Date.now().toString(),
+        title: document.getElementById('legacyTitle').value,
+        type: document.getElementById('legacyType').value,
+        deadline: document.getElementById('legacyDeadline').value,
+        workUrl: document.getElementById('legacyWorkUrl').value,
+        reqUrl: document.getElementById('legacyReqUrl').value,
+        references: document.getElementById('legacyRefs').value
+      });
+      closeLegacyAddModal();
+      saveToStorage();
+      renderLegacyTasks();
+    }
+    function deleteLegacyTask(id) {
+      if (confirm('この課題を削除しますか？')) {
+        legacyTasks = legacyTasks.filter(t => t.id !== id);
         saveToStorage();
+        renderLegacyTasks();
       }
     }
+    function launchLegacyTask(id) {
+      const task = legacyTasks.find(t => t.id === id);
+      if (!task) return;
+      const urls = [];
+      if (task.workUrl) urls.push(task.workUrl);
+      if (task.reqUrl) urls.push(task.reqUrl);
+      if (task.references) {
+        task.references.split('\n').map(u => u.trim()).filter(u => u.length > 0).forEach(u => urls.push(u.startsWith('http') ? u : 'https://' + u));
+      }
+      urls.forEach(u => window.open(u, '_blank'));
+    }
 
-    // バックアップ＆復元
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMessage').textContent = msg;
+      toast.classList.remove('translate-y-10', 'opacity-0');
+      setTimeout(() => toast.classList.add('translate-y-10', 'opacity-0'), 2500);
+    }
+
     function exportData() {
-      const blob = new Blob([JSON.stringify(desktopItems, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      const data = { desktopItems, legacyTasks };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `desktop_backup_${new Date().toISOString().slice(0,10)}.json`;
+      a.href = URL.createObjectURL(blob);
+      a.download = `windows_desktop_backup_${new Date().toISOString().slice(0,10)}.json`;
       a.click();
     }
     function importData(e) {
@@ -458,18 +786,18 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         try {
-          desktopItems = JSON.parse(evt.target.result);
+          const data = JSON.parse(evt.target.result);
+          desktopItems = data.desktopItems || [];
+          legacyTasks = data.legacyTasks || [];
           saveToStorage();
-          alert('復元が完了しました！');
+          alert('復元完了！');
         } catch (err) { alert('無効なファイルです'); }
       };
       reader.readAsText(file);
     }
 
-    // 時計
     function updateClock() {
-      const now = new Date();
-      document.getElementById('clock').textContent = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('clock').textContent = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
     }
     setInterval(updateClock, 1000);
     updateClock();
