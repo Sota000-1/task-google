@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desktop Launcher</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background: radial-gradient(circle at 50% 20%, #1e40af 0%, #0f172a 75%, #020617 100%);
+      user-select: none;
+    }
+    .desktop-icon:hover {
+      background-color: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .desktop-icon:active {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col justify-between text-white">
+
+  <!-- 上部クイック追加バー（URL一個ですぐ作れる） -->
+  <header class="bg-slate-900/60 backdrop-blur-md border-b border-white/10 px-4 py-2.5 flex items-center justify-between z-10 shadow-md">
+    <!-- URL一発作成フォーム -->
+    <form onsubmit="addShortcut(event)" class="flex items-center gap-2 flex-1 max-w-2xl">
+      <div class="relative flex-1">
+        <i class="fa-solid fa-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input type="text" id="inputUrl" required placeholder="URLを貼り付け (例: docs.google.com/document/... や canva.com...)" 
+               class="w-full bg-slate-800/80 border border-slate-600 rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
+      </div>
+      <input type="text" id="inputName" placeholder="名前 (省略OK)" 
+             class="w-40 bg-slate-800/80 border border-slate-600 rounded-md px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-blue-400">
+      <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-md shadow transition flex items-center gap-1.5 shrink-0">
+        <i class="fa-solid fa-plus"></i> ショートカット作成
+      </button>
+    </form>
+
+    <!-- ワンクリック新規作成ショートカット & データ管理 -->
+    <div class="flex items-center gap-2 pl-4">
+      <button onclick="createNewDoc('docs')" title="新規 Google Docs 作成" class="p-1.5 bg-blue-600/30 hover:bg-blue-600/60 border border-blue-400/30 rounded text-blue-300 text-xs transition">
+        <i class="fa-solid fa-file-word"></i> +Docs
+      </button>
+      <button onclick="createNewDoc('sheets')" title="新規 Google Sheets 作成" class="p-1.5 bg-emerald-600/30 hover:bg-emerald-600/60 border border-emerald-400/30 rounded text-emerald-300 text-xs transition">
+        <i class="fa-solid fa-file-excel"></i> +Sheets
+      </button>
+      <button onclick="createNewDoc('slides')" title="新規 Google Slides 作成" class="p-1.5 bg-amber-600/30 hover:bg-amber-600/60 border border-amber-400/30 rounded text-amber-300 text-xs transition">
+        <i class="fa-solid fa-file-powerpoint"></i> +Slides
+      </button>
+
+      <span class="text-slate-600 mx-1">|</span>
+      <button onclick="exportData()" title="バックアップ" class="text-slate-400 hover:text-white text-xs p-1"><i class="fa-solid fa-download"></i></button>
+      <label title="復元" class="text-slate-400 hover:text-white text-xs p-1 cursor-pointer">
+        <i class="fa-solid fa-upload"></i>
+        <input type="file" onchange="importData(event)" class="hidden" accept=".json">
+      </label>
+    </div>
+  </header>
+
+  <!-- デスクトップ画面（アイコンがグリッド状に並ぶ場所） -->
+  <main id="desktop" class="flex-1 p-6 overflow-auto grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-4 content-start">
+    <!-- JSでショートカットアイコンが並びます -->
+  </main>
+
+  <!-- Windows風 タスクバー -->
+  <footer class="h-10 bg-slate-950/80 backdrop-blur-lg border-t border-white/10 px-4 flex items-center justify-between text-xs text-slate-400 z-10">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 text-blue-400 font-bold">
+        <i class="fa-brands fa-windows text-sm"></i>
+        <span>Desktop</span>
+      </div>
+      <span class="text-slate-600">|</span>
+      <span id="itemCount" class="text-[11px]">0 個のアイテム</span>
+    </div>
+    <div id="clock" class="font-mono text-slate-300 text-[11px]"></div>
+  </footer>
+
+  <!-- 名前変更モーダル -->
+  <div id="renameModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-white/20 p-4 rounded-lg w-80 shadow-2xl">
+      <h3 class="text-xs font-bold mb-3 text-slate-300">ショートカット名の変更</h3>
+      <input type="hidden" id="renameId">
+      <input type="text" id="renameInput" class="w-full bg-slate-800 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-400 mb-3">
+      <div class="flex justify-end gap-2">
+        <button onclick="closeRenameModal()" class="px-3 py-1 text-xs text-slate-400 hover:text-white">キャンセル</button>
+        <button onclick="saveRename()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-xs font-bold text-white">変更</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let shortcuts = JSON.parse(localStorage.getItem('desktop_shortcuts')) || [
+      { id: '1', name: 'Google Classroom', url: 'https://classroom.google.com' },
+      { id: '2', name: 'Google Drive', url: 'https://drive.google.com' }
+    ];
+
+    function saveToStorage() {
+      localStorage.setItem('desktop_shortcuts', JSON.stringify(shortcuts));
+      renderDesktop();
+    }
+
+    // URLからアイコンの種類とデフォルト名を自動判定
+    function detectType(url) {
+      if (url.includes('docs.google.com/document')) {
+        return { icon: 'fa-solid fa-file-lines', color: 'text-blue-400', bg: 'bg-blue-500/20', defaultName: 'Google ドキュメント' };
+      } else if (url.includes('docs.google.com/spreadsheets')) {
+        return { icon: 'fa-solid fa-table', color: 'text-emerald-400', bg: 'bg-emerald-500/20', defaultName: 'Google スプレッドシート' };
+      } else if (url.includes('docs.google.com/presentation')) {
+        return { icon: 'fa-solid fa-file-powerpoint', color: 'text-amber-400', bg: 'bg-amber-500/20', defaultName: 'Google スライド' };
+      } else if (url.includes('canva.com')) {
+        return { icon: 'fa-solid fa-palette', color: 'text-cyan-400', bg: 'bg-cyan-500/20', defaultName: 'Canva デザイン' };
+      } else if (url.includes('classroom.google.com')) {
+        return { icon: 'fa-solid fa-graduation-cap', color: 'text-emerald-400', bg: 'bg-emerald-500/20', defaultName: 'Classroom' };
+      } else if (url.includes('turnitin.com')) {
+        return { icon: 'fa-solid fa-clipboard-check', color: 'text-rose-400', bg: 'bg-rose-500/20', defaultName: 'Turnitin' };
+      }
+      return { icon: 'fa-solid fa-globe', color: 'text-blue-300', bg: 'bg-blue-500/10', defaultName: 'Web サイト' };
+    }
+
+    function renderDesktop() {
+      const desktop = document.getElementById('desktop');
+      desktop.innerHTML = '';
+      document.getElementById('itemCount').textContent = `${shortcuts.length} 個のアイテム`;
+
+      shortcuts.forEach(item => {
+        const type = detectType(item.url);
+        const card = document.createElement('div');
+        card.className = `desktop-icon group relative flex flex-col items-center justify-start p-2 rounded-lg border border-transparent cursor-pointer transition text-center w-24`;
+        
+        card.onclick = (e) => {
+          // ボタンクリック時は開かない
+          if (e.target.closest('button')) return;
+          window.open(item.url, '_blank');
+        };
+
+        card.innerHTML = `
+          <!-- アイコン画像部分 -->
+          <div class="relative w-12 h-12 rounded-xl flex items-center justify-center mb-1.5 ${type.bg} border border-white/10 shadow-md group-hover:scale-105 transition-transform">
+            <i class="${type.icon} ${type.color} text-2xl"></i>
+            <!-- Windowsのショートカットの矢印マーク風 -->
+            <div class="absolute -bottom-0.5 -left-0.5 bg-white text-slate-900 rounded-sm w-3.5 h-3.5 flex items-center justify-center text-[8px] shadow">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </div>
+          </div>
+
+          <!-- ショートカット名（2行まで表示） -->
+          <span class="text-[11px] font-medium text-slate-100 leading-tight line-clamp-2 drop-shadow break-all px-1" title="${item.name}&#10;${item.url}">
+            ${item.name}
+          </span>
+
+          <!-- 操作ホバーメニュー（名前変更・削除） -->
+          <div class="absolute -top-1.5 -right-1.5 hidden group-hover:flex items-center gap-0.5 bg-slate-900 border border-white/20 rounded-md p-0.5 shadow-lg z-20">
+            <button onclick="openRenameModal('${item.id}', '${item.name}')" title="名前変更" class="p-1 hover:text-blue-400 text-slate-300 text-[10px]">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button onclick="deleteShortcut('${item.id}')" title="削除" class="p-1 hover:text-rose-400 text-slate-300 text-[10px]">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+        desktop.appendChild(card);
+      });
+    }
+
+    // URLからショートカット追加
+    function addShortcut(e) {
+      e.preventDefault();
+      let url = document.getElementById('inputUrl').value.trim();
+      let name = document.getElementById('inputName').value.trim();
+
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      if (!name) {
+        name = detectType(url).defaultName;
+      }
+
+      shortcuts.push({
+        id: Date.now().toString(),
+        name: name,
+        url: url
+      });
+
+      document.getElementById('inputUrl').value = '';
+      document.getElementById('inputName').value = '';
+      saveToStorage();
+    }
+
+    // 新規Doc作成ショートカット
+    function createNewDoc(type) {
+      const urls = {
+        docs: 'https://docs.new',
+        sheets: 'https://sheets.new',
+        slides: 'https://slides.new'
+      };
+      window.open(urls[type], '_blank');
+    }
+
+    // 名前変更
+    function openRenameModal(id, currentName) {
+      document.getElementById('renameId').value = id;
+      document.getElementById('renameInput').value = currentName;
+      document.getElementById('renameModal').classList.remove('hidden');
+      document.getElementById('renameInput').focus();
+    }
+    function closeRenameModal() {
+      document.getElementById('renameModal').classList.add('hidden');
+    }
+    function saveRename() {
+      const id = document.getElementById('renameId').value;
+      const newName = document.getElementById('renameInput').value.trim();
+      if (newName) {
+        const item = shortcuts.find(s => s.id === id);
+        if (item) item.name = newName;
+        saveToStorage();
+      }
+      closeRenameModal();
+    }
+
+    // 削除
+    function deleteShortcut(id) {
+      shortcuts = shortcuts.filter(s => s.id !== id);
+      saveToStorage();
+    }
+
+    // バックアップ＆復元
+    function exportData() {
+      const blob = new Blob([JSON.stringify(shortcuts, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `desktop_shortcuts_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+    function importData(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          shortcuts = JSON.parse(evt.target.result);
+          saveToStorage();
+          alert('復元完了！');
+        } catch (err) { alert('無効なファイルです'); }
+      };
+      reader.readAsText(file);
+    }
+
+    // 時計
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    renderDesktop();
+  </script>
+</body>
+</html>
